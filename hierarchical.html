@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hierarchical Clustering · Unsupervised Lab</title>
+  <meta name="description" content="Interactive hierarchical clustering: read and cut dendrograms, build the tree step by step, and compare single, complete, average, centroid and Ward linkage.">
+  <meta name="author" content="Eng. Saeed Serwan Abdulsattar">
+  <meta property="og:title" content="Hierarchical Clustering · Unsupervised Lab">
+  <meta property="og:description" content="Interactive hierarchical clustering: read and cut dendrograms, build the tree step by step, and compare single, complete, average, centroid and Ward linkage.">
+  <meta property="og:image" content="assets/img/favicon-512.png">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" type="image/svg+xml" href="assets/img/utb-logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/img/favicon-180.png">
+  <link rel="stylesheet" href="assets/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html">
+    <img class="brand-logo" src="assets/img/utb-logo.svg" alt="University of Technology Bahrain logo" onerror="this.remove()">
+    <span class="brand-title">Unsupervised Lab</span>
+  </a>
+  <nav class="page-tabs" aria-label="Lessons">
+    <a href="index.html">Overview</a>
+    <a href="kmeans.html">K-means</a>
+    <a href="hierarchical.html" class="active" aria-current="page">Hierarchical</a>
+    <a href="pca.html">PCA</a>
+    <a href="beyond.html">Beyond the lecture</a>
+    <a href="code-clustering.html">Clustering in Python</a>
+    <a href="code-pca.html">PCA in Python</a>
+  </nav>
+  <nav class="top-links">
+    <a href="https://github.com/SaeedSerwan/unsupervised" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+  </nav>
+</header>
+
+<div class="layout">
+  <aside class="toc" aria-label="Contents">
+    <p class="toc-title">Hierarchical</p>
+    <ol>
+      <li><a href="#idea">A family tree of the data</a></li>
+      <li><a href="#read">Reading a dendrogram</a></li>
+      <li><a href="#cut">Cutting the tree</a></li>
+      <li><a href="#build">Building it bottom-up</a></li>
+      <li><a href="#linkage">Linkage: distance between groups</a></li>
+      <li><a href="#linkage-compare">Same data, different trees</a></li>
+      <li><a href="#cost">How big can it get?</a></li>
+      <li><a href="#summary">Pros, cons, and K-means</a></li>
+      <li><a href="#quiz">Check yourself</a></li>
+    </ol>
+  </aside>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Part 1 · Clustering · Hierarchical</p>
+      <h1>Hierarchical clustering, <em>grown like a tree.</em></h1>
+      <p class="lead">Instead of one set of K groups, hierarchical clustering builds a tree called a <strong>dendrogram</strong>. It shows which points are most alike, which small groups join into bigger ones, and so on up to a single root. You do not choose K first: you build the tree, look at it, then decide where to cut.</p>
+      <div class="learn-grid">
+        <div><span class="num">01</span>Read similarity from fusion height, not leaf order</div>
+        <div><span class="num">02</span>Cut a dendrogram to get any number of clusters</div>
+        <div><span class="num">03</span>Run agglomerative clustering by hand</div>
+        <div><span class="num">04</span>Compare single, complete, average and centroid linkage</div>
+        <div><span class="num">05</span>Know when to prefer it over K-means</div>
+      </div>
+    </section>
+
+    <section id="idea" class="chapter">
+      <h2><span class="chap">01</span>A family tree of the data</h2>
+      <p>Picture a family tree upside down. At the bottom, every <strong>leaf</strong> is one data point. Going up, two very similar points join first, low down. Then small groups join other groups. At the top, everything joins into one big cluster: the <strong>root</strong>.</p>
+      <div class="callout"><span class="label">The one rule</span><p>The <strong>height</strong> where two things join tells you how different they are. Join low: very similar. Join high: very different.</p></div>
+      <p>The big advantage over K-means: we do not have to choose \(K\) first. One tree gives every possible number of clusters, from \(n\) (each point alone) down to 1. In medicine this is popular because the tree itself is a picture you can show a doctor: tumour samples clustered by gene activity, with the subtypes visible as branches.</p>
+    </section>
+
+    <section id="read" class="chapter">
+      <h2><span class="chap">02</span>Reading a dendrogram</h2>
+      <p>A common mistake: two leaves that sit next to each other at the bottom of the tree look similar. They may not be. The left-to-right order of leaves is partly arbitrary (you can flip any branch without changing the tree). Only the <strong>height of the fusion</strong> matters.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Click two points</p><p class="lab-hint">Click points in the scatter or leaves in the tree. Their fusion is highlighted.</p></div>
+        <div class="controls">
+          <button class="btn ghost small" id="rd-new">New points</button>
+          <button class="btn ghost small" id="rd-trap">Show me the trap</button>
+          <span class="status" id="rd-status"></span>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid even">
+            <div><div class="plot" id="rd-tree"></div><p class="plot-cap"><b>Dendrogram</b> (complete linkage)</p></div>
+            <div><div class="plot" id="rd-scatter"></div><p class="plot-cap"><b>The same points</b> in feature space</p></div>
+          </div>
+        </div>
+        <div class="lab-foot" id="rd-foot"></div>
+      </div>
+    </section>
+
+    <section id="cut" class="chapter">
+      <h2><span class="chap">03</span>Cutting the tree</h2>
+      <p>To get actual groups, draw a <strong>horizontal line</strong> across the tree. Every branch the line crosses becomes one cluster. Cut high: few clusters. Cut low: many. This is why we do not need K in advance, but we still decide where to cut (K in disguise).</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Drag the cut line</p><p class="lab-hint">Drag the dashed line on the tree, or use the slider.</p></div>
+        <div class="controls">
+          <select id="ct-data" aria-label="Dataset"><option value="blobs3">3 blobs</option><option value="blobs4">4 blobs</option><option value="varied">uneven blobs</option><option value="moons">two moons</option><option value="uniform">no structure</option></select>
+          <label class="ctl">points <input type="range" id="ct-n" min="10" max="90" step="5" value="40"><output></output></label>
+          <select id="ct-link" aria-label="Linkage"><option value="complete">complete linkage</option><option value="average">average linkage</option><option value="single">single linkage</option><option value="centroid">centroid linkage</option><option value="ward">Ward linkage</option></select>
+          <label class="ctl">clusters <input type="range" id="ct-k" min="1" max="10" value="3"><output></output></label>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid">
+            <div><div class="plot" id="ct-tree"></div></div>
+            <div><div class="plot" id="ct-scatter"></div><p class="plot-cap" id="ct-cap"></p></div>
+          </div>
+        </div>
+      </div>
+      <details class="deeper">
+        <summary>Where should I cut? <span class="tag">dive deeper</span></summary>
+        <div class="body">
+          <p>Look for a <strong>long vertical gap</strong>: a range of heights where no merges happen. Cutting inside that gap gives groups that are far apart compared with how tight they are. In the lab, 3 blobs show one obvious gap; "no structure" data has none, and every cut is equally arbitrary. You can also use the silhouette score from the <a href="kmeans.html#choose-k">K-means lesson</a> on each cut, or a domain reason ("the business wants 4 segments").</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="build" class="chapter">
+      <h2><span class="chap">04</span>Building it bottom-up</h2>
+      <p>The usual method is <strong>agglomerative</strong> ("agglomerate" means to gather into a ball): start with every point alone and keep joining the two closest clusters.</p>
+      <ol class="prose">
+        <li>Start with \(n\) clusters, one point each. Compute the distance between every pair.</li>
+        <li>Repeat for \(i = n, n-1, \dots, 2\):
+          <ul><li>Find the two clusters that are closest and <strong>merge</strong> them. Their distance is the height of the join in the tree.</li>
+          <li>Update the distances between the new cluster and all the others.</li></ul></li>
+      </ol>
+      <p>Each loop reduces the number of clusters by one, so after \(n-1\) merges we reach the root.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Agglomerative clustering by hand</p><p class="lab-hint">The smallest number in the matrix decides the next merge.</p></div>
+        <div class="controls">
+          <select id="bd-link" aria-label="Linkage"><option value="complete">complete linkage</option><option value="single">single linkage</option><option value="average">average linkage</option><option value="centroid">centroid linkage</option></select>
+          <span class="grow"></span>
+          <div class="btn-row"><button class="btn ghost small" id="bd-new">New points</button><button class="btn ghost small" id="bd-back">Back</button><button class="btn small" id="bd-step">Merge next</button></div>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid even">
+            <div><div class="plot" id="bd-scatter"></div></div>
+            <div><div class="plot" id="bd-tree"></div></div>
+          </div>
+          <div class="lab-grid" style="margin-top:1rem">
+            <div class="table-wrap" style="margin:0"><table class="matrix" id="bd-matrix"></table></div>
+            <div><p class="kicker">Step <span id="bd-n"></span></p><p id="bd-msg" style="font-size:.92rem;color:var(--ink-2)"></p></div>
+          </div>
+        </div>
+      </div>
+      <div class="callout tip"><span class="label">Try it on paper</span><p>Take 5 points on a grid, compute the 10 pairwise distances, and do the first 3 merges by hand with complete linkage. Then check yourself with this lab.</p></div>
+    </section>
+
+    <section id="linkage" class="chapter">
+      <h2><span class="chap">05</span>Linkage: the distance between groups</h2>
+      <p>The distance between two <em>points</em> is easy (Euclidean). The distance between two <em>groups</em> has no single answer. Do we use the two closest points? The two farthest? The average? The rule we choose is called the <strong>linkage</strong>.</p>
+      <div class="table-wrap"><table class="clean">
+        <thead><tr><th>Linkage</th><th>Distance between groups A and B</th><th>Typical result</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Complete</strong></td><td>the two <em>farthest</em> points: \(\max_{a\in A,\, b\in B} d(a,b)\)</td><td>compact, balanced clusters</td></tr>
+          <tr><td><strong>Single</strong></td><td>the two <em>closest</em> points: \(\min_{a\in A,\, b\in B} d(a,b)\)</td><td>long "chains"; can follow curved shapes</td></tr>
+          <tr><td><strong>Average</strong></td><td>the average of <em>all</em> \(|A|\cdot|B|\) point-to-point distances</td><td>balanced; a good default</td></tr>
+          <tr><td><strong>Centroid</strong></td><td>distance between the two group centres \(\bar{x}_A\) and \(\bar{x}_B\)</td><td>can produce "inversions" in the tree</td></tr>
+        </tbody>
+      </table></div>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">What does each linkage measure?</p><p class="lab-hint">Drag any point. The dashed lines show which distance is used.</p></div>
+        <div class="controls"><div class="seg" id="lk-mode"><button data-v="complete" class="on">Complete</button><button data-v="single">Single</button><button data-v="average">Average</button><button data-v="centroid">Centroid</button></div></div>
+        <div class="lab-body"><div class="lab-grid"><div class="plot" id="lk-plot"></div><div><div class="stats" id="lk-stats"></div><p id="lk-msg" style="font-size:.9rem;color:var(--ink-2)"></p></div></div></div>
+      </div>
+      <p>In practice, <strong>complete</strong> and <strong>average</strong> linkage are the most popular because they give balanced trees. scikit-learn's default is <strong>Ward</strong> linkage, which merges the pair of clusters that increases the total within-cluster variation the least: the K-means objective, applied bottom-up.</p>
+    </section>
+
+    <section id="linkage-compare" class="chapter">
+      <h2><span class="chap">06</span>Same data, different trees</h2>
+      <p>The choice of linkage (and of distance) can change your conclusions. Here is the same dataset clustered four ways, each cut at the true number of groups.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Four linkages side by side</p><p class="lab-hint">Single linkage's "staircase" tree is easy to spot.</p></div>
+        <div class="controls"><select id="cmp-data" aria-label="Dataset"><option value="blobs3">3 blobs</option><option value="moons">two moons</option><option value="circles">circles</option><option value="varied">uneven blobs</option><option value="noisy">blobs with noise</option></select></div>
+        <div class="lab-body"><div class="lab-grid four" id="cmp-grid"></div></div>
+        <div class="lab-foot" id="cmp-foot"></div>
+      </div>
+      <div class="callout"><span class="label">Lesson</span><p>Always try more than one linkage and check whether the groups make sense. On blobs, complete, average and Ward agree. On curved shapes, single linkage wins because it follows chains of close neighbours. With noise, the same chaining makes single linkage glue everything together.</p></div>
+    </section>
+
+    <section id="cost" class="chapter">
+      <h2><span class="chap">07</span>How big can it get?</h2>
+      <p>Hierarchical clustering needs the distance between <em>every pair</em> of points. That number grows with the square of \(n\).</p>
+      <div class="lab">
+        <div class="controls"><label class="ctl">points n <input type="range" id="cs-n" min="0" max="6" value="2"><output></output></label></div>
+        <div class="lab-body"><div class="stats" id="cs-stats" style="margin:0"></div></div>
+        <div class="lab-foot">For huge data, K-means is usually the practical choice: each iteration only compares every point with K centroids.</div>
+      </div>
+    </section>
+
+    <section id="summary" class="chapter">
+      <h2><span class="chap">08</span>Pros, cons, and K-means</h2>
+      <div class="pros-cons">
+        <div><h4>Pros</h4><ul><li>No K needed up front</li><li>The tree is a picture you can show a client or a doctor</li><li>One run gives every number of clusters</li><li>Deterministic: no random start</li></ul></div>
+        <div><h4>Cons</h4><ul><li>You still choose where to cut (K in disguise)</li><li>Results depend on distance and linkage</li><li>Needs all pairwise distances: slow and memory-hungry for large n</li><li>Merges are final: an early mistake is never undone</li></ul></div>
+      </div>
+      <div class="table-wrap"><table class="clean">
+        <thead><tr><th></th><th>K-means</th><th>Hierarchical (agglomerative)</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Choose K first?</strong></td><td>Yes</td><td>No: cut the tree afterwards</td></tr>
+          <tr><td><strong>Randomness</strong></td><td>Random start; run many times</td><td>None</td></tr>
+          <tr><td><strong>Output</strong></td><td>K labels and K centroids</td><td>A full tree (dendrogram)</td></tr>
+          <tr><td><strong>Cluster shapes</strong></td><td>Round, similar sizes</td><td>Depends on linkage (single follows chains)</td></tr>
+          <tr><td><strong>Large data</strong></td><td>Fast</td><td>Slow beyond tens of thousands of points</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="quiz" class="chapter">
+      <h2><span class="chap">09</span>Check yourself</h2>
+      <div class="quiz" id="quiz-box"></div>
+      <p class="quiz-score" id="quiz-box-score"></p>
+      <a class="next-card" href="pca.html">
+        <span class="next-eyebrow">Start part 2</span>
+        <span class="next-title">Principal component analysis →</span>
+        <span class="next-text">Clustering reduced the types of rows. Now reduce the number of columns.</span>
+      </a>
+    </section>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <img class="footer-logo" src="assets/img/utb-logo.svg" alt="" onerror="this.remove()">
+    <div>
+      <p><strong>Unsupervised Lab</strong>: an open, interactive companion to <em>CSIT843A Lecture 4: Unsupervised Learning</em>.</p>
+      <p>Created by <strong>Eng. Saeed Serwan Abdulsattar</strong>, College of Computer Studies, University of Technology Bahrain.</p>
+      <p><a href="https://github.com/SaeedSerwan/unsupervised" target="_blank" rel="noopener">Source on GitHub</a> · MIT License</p>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/vendor/katex/katex.min.js"></script>
+<script src="assets/vendor/katex/auto-render.min.js"></script>
+<script src="assets/js/lib.js"></script>
+<script src="assets/js/hier.js"></script>
+</body>
+</html>

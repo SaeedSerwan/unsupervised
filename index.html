@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unsupervised Lab · Interactive Unsupervised Learning: Clustering and PCA</title>
+  <meta name="description" content="An interactive, minimal lab for learning unsupervised learning: K-means, hierarchical clustering and PCA. College of Computer Studies, University of Technology Bahrain.">
+  <meta name="author" content="Eng. Saeed Serwan Abdulsattar">
+  <meta property="og:title" content="Unsupervised Lab · Interactive Unsupervised Learning: Clustering and PCA">
+  <meta property="og:description" content="An interactive, minimal lab for learning unsupervised learning: K-means, hierarchical clustering and PCA. College of Computer Studies, University of Technology Bahrain.">
+  <meta property="og:image" content="assets/img/favicon-512.png">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" type="image/svg+xml" href="assets/img/utb-logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/img/favicon-180.png">
+  <link rel="stylesheet" href="assets/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html">
+    <img class="brand-logo" src="assets/img/utb-logo.svg" alt="University of Technology Bahrain logo" onerror="this.remove()">
+    <span class="brand-title">Unsupervised Lab</span>
+  </a>
+  <nav class="page-tabs" aria-label="Lessons">
+    <a href="index.html" class="active" aria-current="page">Overview</a>
+    <a href="kmeans.html">K-means</a>
+    <a href="hierarchical.html">Hierarchical</a>
+    <a href="pca.html">PCA</a>
+    <a href="beyond.html">Beyond the lecture</a>
+    <a href="code-clustering.html">Clustering in Python</a>
+    <a href="code-pca.html">PCA in Python</a>
+  </nav>
+  <nav class="top-links">
+    <a href="https://github.com/SaeedSerwan/unsupervised" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+  </nav>
+</header>
+
+<div class="layout">
+  <aside class="toc" aria-label="Contents">
+    <p class="toc-title">Overview</p>
+    <ol>
+      <li><a href="#no-answers">Take the answers away</a></li>
+      <li><a href="#map">Where it fits</a></li>
+      <li><a href="#two-jobs">Rows or columns?</a></li>
+      <li><a href="#fuzzy">Same data, many answers</a></li>
+      <li><a href="#vs">Classification vs clustering</a></li>
+      <li><a href="#uses">Where it is used</a></li>
+      <li><a href="#hard">Why it is harder</a></li>
+      <li><a href="#families">Families of methods</a></li>
+      <li><a href="#path">Your learning path</a></li>
+      <li><a href="#quiz">Check yourself</a></li>
+    </ol>
+  </aside>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">CSIT843A · Lecture 4 · Unsupervised learning</p>
+      <h1>Finding structure <em>with no answer key.</em></h1>
+      <p class="lead">
+        So far, every model we trained was given the inputs <strong>and</strong> the answers. Unsupervised learning takes the
+        answers away. The computer only sees the data and has to discover the structure on its own: groups of similar
+        rows, or a few summary columns that keep most of the information.
+      </p>
+      <div class="learn-grid">
+        <div><span class="num">01</span>Tell supervised and unsupervised problems apart</div>
+        <div><span class="num">02</span>Choose between clustering and dimensionality reduction</div>
+        <div><span class="num">03</span>Run K-means step by step and choose K</div>
+        <div><span class="num">04</span>Build and read a dendrogram</div>
+        <div><span class="num">05</span>Use PCA and decide how many components to keep</div>
+        <div><span class="num">06</span>Reproduce everything in Python</div>
+      </div>
+    </section>
+
+    <!-- 1 -->
+    <section id="no-answers" class="chapter">
+      <h2><span class="chap">01</span>Take the answers away</h2>
+      <p>In supervised learning every row had an answer column, \(y\): a price, <em>spam / not spam</em>, a species. In unsupervised learning we only have the \(X\) columns. Nobody tells us the right answer, so the goal changes: we are not predicting, we are <strong>exploring</strong>. Are there groups? Is there a simpler way to describe the data? Can we draw it in 2D so a human can look at it?</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">What the computer sees</p><p class="lab-hint">Switch views. The points never move; only what we know about them changes.</p></div>
+        <div class="controls">
+          <div class="seg" id="sup-mode">
+            <button data-v="sup" class="on">Supervised: labels given</button>
+            <button data-v="unsup">Unsupervised: no labels</button>
+            <button data-v="found">Let the algorithm look</button>
+          </div>
+          <button class="btn ghost small" id="sup-new">New data</button>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid">
+            <div class="plot" id="sup-plot"></div>
+            <div>
+              <div class="table-wrap" style="margin-top:0"><table class="datatable" id="sup-table"></table></div>
+              <p class="plot-cap" id="sup-cap" style="text-align:left"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="callout"><span class="label">Analogy</span><p>Supervised learning is a teacher marking your homework. Unsupervised learning is being handed a box of 500 photos and asked to <em>"sort these into piles that make sense"</em>. There is no single correct answer, and you decide what "makes sense".</p></div>
+    </section>
+
+    <!-- 2 -->
+    <section id="map" class="chapter">
+      <h2><span class="chap">02</span>Where it fits</h2>
+      <p>One question splits machine learning in two: <strong>do you have labelled data?</strong> Under unsupervised learning we ask one more: do we want to <em>group the rows</em>, or <em>use fewer columns</em>? Click a box to jump to its lesson.</p>
+      <div class="map" id="course-map"></div>
+      <p class="prose" style="color:var(--muted);font-size:.92rem">Quick check: a bank has customer data but no labels, and wants to find "types" of customers. Which box? <em>Clustering.</em></p>
+    </section>
+
+    <!-- 3 -->
+    <section id="two-jobs" class="chapter">
+      <h2><span class="chap">03</span>Two jobs: rows or columns?</h2>
+      <p>Unsupervised methods come in two families. <strong>Clustering</strong> groups the <em>rows</em> (customers, patients, documents) so that rows in the same group are similar. <strong>Dimensionality reduction</strong> shrinks the <em>columns</em>: if we have 50 features, can 2 or 3 new features describe the data well enough to plot it?</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">One table, two jobs</p><p class="lab-hint">Ten students, five measurements, no grade column.</p></div>
+        <div class="controls">
+          <div class="seg" id="job-mode">
+            <button data-v="raw" class="on">Raw data</button>
+            <button data-v="cluster">Clustering: group the rows</button>
+            <button data-v="reduce">Dim. reduction: fewer columns</button>
+          </div>
+        </div>
+        <div class="lab-body">
+          <div class="table-wrap" style="margin:0"><table class="datatable" id="job-table"></table></div>
+        </div>
+        <div class="lab-foot" id="job-foot"></div>
+      </div>
+      <div class="callout tip"><span class="label">Easy way to remember</span><p>Clustering shortens the list of <em>types of rows</em>. Dimensionality reduction shortens the list of <em>columns</em>.</p></div>
+    </section>
+
+    <!-- 4 -->
+    <section id="fuzzy" class="chapter">
+      <h2><span class="chap">04</span>Same data, many answers</h2>
+      <p>Before reading on: how would <em>you</em> split these shapes into groups? By colour? By shape? Both are valid. This is the <strong>fuzzy goal</strong> of unsupervised learning: the answer depends on which features and which notion of "similar" you use.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Shapes toy dataset</p><p class="lab-hint">Each mode is a different task on the same twelve shapes.</p></div>
+        <div class="controls">
+          <div class="seg" id="shape-mode">
+            <button data-v="raw" class="on">Unsorted</button>
+            <button data-v="classify">Classification</button>
+            <button data-v="colour">Cluster by colour</button>
+            <button data-v="form">Cluster by shape</button>
+          </div>
+        </div>
+        <div class="lab-body"><div class="plot" id="shape-svg"></div></div>
+        <div class="lab-foot" id="shape-foot"></div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="vs" class="chapter">
+      <h2><span class="chap">05</span>Classification vs clustering</h2>
+      <p>Both put things into groups, which is why students mix them up. The difference is <strong>who defines the groups</strong>.</p>
+      <div class="table-wrap"><table class="clean">
+        <thead><tr><th></th><th>Classification (supervised)</th><th>Clustering (unsupervised)</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Training data</strong></td><td>Features <em>and</em> a label for every row</td><td>Features only</td></tr>
+          <tr><td><strong>Number of groups</strong></td><td>Known in advance (the classes)</td><td>Unknown: you choose it or the method suggests it</td></tr>
+          <tr><td><strong>Meaning of a group</strong></td><td>Given ("spam", "setosa")</td><td>Discovered; a human interprets it afterwards</td></tr>
+          <tr><td><strong>Goal</strong></td><td>Predict the class of a new point</td><td>Describe the structure of the data you have</td></tr>
+          <tr><td><strong>How we judge it</strong></td><td>Accuracy on a test set</td><td>No answer key: is it sensible and useful?</td></tr>
+          <tr><td><strong>Examples</strong></td><td>KNN, logistic regression, SVM, trees</td><td>K-means, hierarchical, DBSCAN, GMM</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 6 -->
+    <section id="uses" class="chapter">
+      <h2><span class="chap">06</span>Where it is used</h2>
+      <div class="cards">
+        <div class="card"><span class="n">medicine</span><h4>Cancer subtypes</h4><p>Tissue samples from many breast-cancer patients. Nobody knows how many subtypes exist. Clustering suggests groups of tumours that look alike, to be studied as possible subtypes.</p></div>
+        <div class="card"><span class="n">biology</span><h4>Gene expression</h4><p>Thousands of genes per sample, far too many to look at. Dimensionality reduction squeezes them into a few summary features we can plot.</p></div>
+        <div class="card"><span class="n">text</span><h4>News grouping</h4><p>News aggregators group thousands of articles about the same story without anyone tagging them first.</p></div>
+        <div class="card"><span class="n">images</span><h4>Face compression</h4><p>A face photo has thousands of pixels. Before training a classifier we often compress each face into a short list of numbers, without labels.</p></div>
+        <div class="card"><span class="n">business</span><h4>Customer segments</h4><p>Group customers by spending and behaviour, then design an offer for each segment.</p></div>
+        <div class="card"><span class="n">security</span><h4>Anomaly detection</h4><p>Points that fit no cluster (unusual logins, odd transactions) are worth a closer look.</p></div>
+      </div>
+      <p>Two benchmark pictures to keep in mind for the rest of the course. On the left our eyes see about fifteen round blobs. On the right, two curved "moons". Some methods handle one and fail on the other.</p>
+      <div class="lab">
+        <div class="lab-body">
+          <div class="lab-grid even">
+            <div><div class="plot" id="bench-many"></div><p class="plot-cap"><b>Many blobs</b>: round groups around a centre</p></div>
+            <div><div class="plot" id="bench-moons"></div><p class="plot-cap"><b>Two moons</b>: curved, interlocking groups</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section id="hard" class="chapter">
+      <h2><span class="chap">07</span>Why it is harder</h2>
+      <div class="cards">
+        <div class="card"><span class="n">1</span><h4>The goal is fuzzy</h4><p>"Find interesting patterns" is not a precise target. Two analysts can find two different, equally reasonable groupings.</p></div>
+        <div class="card"><span class="n">2</span><h4>No answer key</h4><p>In regression we measured test error. Here there is nothing to compare with, so we cannot simply compute accuracy.</p></div>
+        <div class="card"><span class="n">3</span><h4>Many dimensions</h4><p>Data often has many columns, which makes plots impossible and distances less meaningful.</p></div>
+      </div>
+      <p>So in practice we judge unsupervised results by asking: <strong>are the groups sensible to a domain expert, and are they useful for a decision?</strong></p>
+
+      <h3>The curse of dimensionality, seen</h3>
+      <p class="prose">Point 3 is easy to say and surprising to see. Scatter 200 random points in a cube with \(d\) dimensions and measure the distance between every pair. As \(d\) grows, all distances crowd towards the same value: the nearest neighbour is barely nearer than the farthest one. Methods that rely on "close" vs "far" (like K-means) suffer.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Distances in high dimensions</p><p class="lab-hint">Histogram of all pairwise distances, divided by the largest one.</p></div>
+        <div class="controls">
+          <label class="ctl">dimensions \(d\) <input type="range" id="curse-d" min="0" max="10" step="1" value="1"><output></output></label>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid">
+            <div class="plot" id="curse-plot"></div>
+            <div>
+              <div class="stats" id="curse-stats"></div>
+              <p style="font-size:.9rem;color:var(--ink-2)">The <strong>contrast</strong> \((d_{\max}-d_{\min})/d_{\min}\) measures how different "near" and "far" are. In 2D it is huge; in 1000D it is small. This is why we often <a href="pca.html">reduce dimensions with PCA</a> before clustering.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section id="families" class="chapter">
+      <h2><span class="chap">08</span>Families of clustering methods</h2>
+      <div class="cards">
+        <a class="card" href="kmeans.html"><span class="n">centroid-based · this lecture</span><h4>K-means</h4><p>Each cluster has a centre point. Points join the nearest centre.</p></a>
+        <a class="card" href="hierarchical.html"><span class="n">hierarchical · this lecture</span><h4>Agglomerative</h4><p>Build a tree showing which points join together first.</p></a>
+        <a class="card" href="beyond.html#gmm"><span class="n">model-based · beyond</span><h4>Gaussian mixtures</h4><p>Each cluster is a bell-shaped distribution; the data is a mix of them.</p></a>
+        <a class="card" href="beyond.html#dbscan"><span class="n">density-based · beyond</span><h4>DBSCAN</h4><p>Clusters are dense regions separated by sparse ones. Finds odd shapes and noise.</p></a>
+      </div>
+      <h3>Hard vs soft clustering</h3>
+      <p class="prose">In <strong>hard</strong> clustering each customer is in exactly one group. In <strong>soft</strong> clustering a customer can belong partly to several, for example 70% "student" and 30% "family". K-means and hierarchical clustering are both hard.</p>
+      <div class="lab">
+        <div class="lab-body" style="display:grid;gap:.7rem;max-width:640px">
+          <div><p class="kicker">Hard: Customer #17</p><div id="hard-bar"></div></div>
+          <div><p class="kicker">Soft: Customer #17</p><div id="soft-bar"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9 -->
+    <section id="path" class="chapter">
+      <h2><span class="chap">09</span>Your learning path</h2>
+      <div class="cards">
+        <a class="card" href="kmeans.html"><span class="n">part 1 · clustering</span><h4>K-means →</h4><p>Objective, the two-step algorithm, local minima, choosing K, scaling.</p></a>
+        <a class="card" href="hierarchical.html"><span class="n">part 1 · clustering</span><h4>Hierarchical →</h4><p>Dendrograms, cutting the tree, linkage, step-by-step merging.</p></a>
+        <a class="card" href="pca.html"><span class="n">part 2 · dimensionality reduction</span><h4>PCA →</h4><p>Variance, loadings, 3D→2D→1D, how many components to keep.</p></a>
+        <a class="card" href="beyond.html"><span class="n">dive deeper</span><h4>Beyond the lecture →</h4><p>DBSCAN, Gaussian mixtures, and every method on every dataset.</p></a>
+        <a class="card" href="code-clustering.html"><span class="n">practice</span><h4>Clustering in Python →</h4><p>scikit-learn and SciPy, line by line, with a real notebook.</p></a>
+        <a class="card" href="code-pca.html"><span class="n">practice</span><h4>PCA in Python →</h4><p>Standardise, fit, scree plot, biplot and choosing components.</p></a>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section id="quiz" class="chapter">
+      <h2><span class="chap">10</span>Check yourself</h2>
+      <div class="quiz" id="quiz-box"></div>
+      <p class="quiz-score" id="quiz-box-score"></p>
+      <a class="next-card" href="kmeans.html">
+        <span class="next-eyebrow">Start part 1</span>
+        <span class="next-title">K-means clustering →</span>
+        <span class="next-text">Split the data into K groups, one step at a time.</span>
+      </a>
+    </section>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <img class="footer-logo" src="assets/img/utb-logo.svg" alt="" onerror="this.remove()">
+    <div>
+      <p><strong>Unsupervised Lab</strong>: an open, interactive companion to <em>CSIT843A Lecture 4: Unsupervised Learning</em>.</p>
+      <p>Created by <strong>Eng. Saeed Serwan Abdulsattar</strong>, College of Computer Studies, University of Technology Bahrain.</p>
+      <p><a href="https://github.com/SaeedSerwan/unsupervised" target="_blank" rel="noopener">Source on GitHub</a> · MIT License</p>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/vendor/katex/katex.min.js"></script>
+<script src="assets/vendor/katex/auto-render.min.js"></script>
+<script src="assets/js/lib.js"></script>
+<script src="assets/js/overview.js"></script>
+</body>
+</html>

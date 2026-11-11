@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Principal Component Analysis · Unsupervised Lab</title>
+  <meta name="description" content="Interactive PCA: maximum-variance directions, loadings and scores, standardising, reducing 3D data to 2D and 1D, and how to choose the number of components.">
+  <meta name="author" content="Eng. Saeed Serwan Abdulsattar">
+  <meta property="og:title" content="Principal Component Analysis · Unsupervised Lab">
+  <meta property="og:description" content="Interactive PCA: maximum-variance directions, loadings and scores, standardising, reducing 3D data to 2D and 1D, and how to choose the number of components.">
+  <meta property="og:image" content="assets/img/favicon-512.png">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" type="image/svg+xml" href="assets/img/utb-logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/img/favicon-180.png">
+  <link rel="stylesheet" href="assets/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html">
+    <img class="brand-logo" src="assets/img/utb-logo.svg" alt="University of Technology Bahrain logo" onerror="this.remove()">
+    <span class="brand-title">Unsupervised Lab</span>
+  </a>
+  <nav class="page-tabs" aria-label="Lessons">
+    <a href="index.html">Overview</a>
+    <a href="kmeans.html">K-means</a>
+    <a href="hierarchical.html">Hierarchical</a>
+    <a href="pca.html" class="active" aria-current="page">PCA</a>
+    <a href="beyond.html">Beyond the lecture</a>
+    <a href="code-clustering.html">Clustering in Python</a>
+    <a href="code-pca.html">PCA in Python</a>
+  </nav>
+  <nav class="top-links">
+    <a href="https://github.com/SaeedSerwan/unsupervised" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+  </nav>
+</header>
+
+<div class="layout">
+  <aside class="toc" aria-label="Contents">
+    <p class="toc-title">PCA</p>
+    <ol>
+      <li><a href="#why">Why fewer columns?</a></li>
+      <li><a href="#picture">The idea in one picture</a></li>
+      <li><a href="#variance">Variance is information</a></li>
+      <li><a href="#pc1">The first principal component</a></li>
+      <li><a href="#maths">The same idea as maths</a></li>
+      <li><a href="#pc2">PC2 and beyond</a></li>
+      <li><a href="#scaling">Standardise first</a></li>
+      <li><a href="#how-many">How many components? 3D → 2D → 1D</a></li>
+      <li><a href="#recipe">A recipe for choosing</a></li>
+      <li><a href="#wine">Real data: 13 → 2</a></li>
+      <li><a href="#compress">PCA as compression</a></li>
+      <li><a href="#eigen">Under the hood</a></li>
+      <li><a href="#limits">Limits and pitfalls</a></li>
+      <li><a href="#quiz">Check yourself</a></li>
+    </ol>
+  </aside>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Part 2 · Dimensionality reduction</p>
+      <h1>Principal component analysis, <em>fewer columns, same story.</em></h1>
+      <p class="lead">PCA finds a few new directions in the data that keep as much of its spread (variance) as possible. Use them as new columns and you can plot 50-dimensional data in 2D, compress it, or speed up other models. This lesson builds the intuition by rotating lines and point clouds, then teaches you how to decide <strong>how many components to keep</strong>, with many datasets to practise on.</p>
+      <div class="learn-grid">
+        <div><span class="num">01</span>Explain PCA as "find the direction of maximum variance"</div>
+        <div><span class="num">02</span>Read loadings, scores and the PCA formula</div>
+        <div><span class="num">03</span>Know why standardising matters</div>
+        <div><span class="num">04</span>Reduce 3D data to 2D and to 1D, and see what is lost</div>
+        <div><span class="num">05</span>Choose the number of components with the scree plot, cumulative variance and Kaiser rule</div>
+      </div>
+    </section>
+
+    <section id="why" class="chapter">
+      <h2><span class="chap">01</span>Why fewer columns?</h2>
+      <div class="cards">
+        <div class="card"><span class="n">1</span><h4>We cannot see 50 columns</h4><p>We can plot 2 or 3. To look at high-dimensional data, we must squeeze it.</p></div>
+        <div class="card"><span class="n">2</span><h4>The curse of dimensionality</h4><p>With many features, points drift far apart, distances lose meaning, and models need far more data. <a href="index.html#hard">See it here.</a></p></div>
+        <div class="card"><span class="n">3</span><h4>Redundant columns</h4><p>Height in cm and arm span in cm say almost the same thing. One combined column can replace both.</p></div>
+      </div>
+      <p>We have met dimensionality reduction before in the supervised setting: <strong>lasso</strong> and <strong>forward/backward selection</strong> keep some columns and drop others, guided by \(y\). Today there is no \(y\). So instead of <em>choosing</em> columns, PCA <strong>builds new columns that are mixtures of the old ones</strong>.</p>
+    </section>
+
+    <section id="picture" class="chapter">
+      <h2><span class="chap">02</span>The idea in one picture</h2>
+      <p>On the left: points in 3D. The grey sheet is the flat plane that sits as close as possible to all of them, and the short lines show each point dropping straight onto it. On the right: each point described by <em>where it landed on the plane</em>, using two coordinates, the first and second principal components. Three numbers per point became two, and the groups are still clear.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">From 3D to 2D</p><p class="lab-hint">Drag the 3D view to rotate it. Look at it edge-on: the points hug the plane.</p></div>
+        <div class="controls"><label class="check"><input type="checkbox" id="pic-spin" checked> rotate automatically</label><label class="check"><input type="checkbox" id="pic-drop" checked> drop lines</label></div>
+        <div class="lab-body"><div class="lab-grid even">
+          <div><div class="plot" id="pic-3d"></div><p class="plot-cap"><b>Original space</b>: 3 features</p></div>
+          <div><div class="plot" id="pic-2d"></div><p class="plot-cap"><b>Principal component scores</b>: 2 new features</p></div>
+        </div></div>
+      </div>
+    </section>
+
+    <section id="variance" class="chapter">
+      <h2><span class="chap">03</span>Variance is information</h2>
+      <p>PCA looks for a few new directions that keep as much of the <strong>spread</strong> (variance) as possible. Why variance? Because that is where the information is. A column where every value is the same tells you nothing; a column whose values vary a lot helps tell the rows apart.</p>
+      <div class="callout warn"><span class="label">Very practical warning</span><p>Always <strong>centre</strong> each column first (subtract its mean), and usually <strong>scale</strong> it too (divide by its standard deviation). Otherwise a column in large units looks "important" just because its numbers are big. More in <a href="#scaling">§07</a>.</p></div>
+    </section>
+
+    <section id="pc1" class="chapter">
+      <h2><span class="chap">04</span>The first principal component</h2>
+      <p>The first principal component \(Z_1\) is a new column made by mixing the old ones:</p>
+      <div class="formula">$$Z_1 = \phi_{11}X_1 + \phi_{21}X_2 + \dots + \phi_{p1}X_p \qquad \text{with} \qquad \sum_{j=1}^{p}\phi_{j1}^2 = 1$$</div>
+      <p>The weights \(\phi\) are the <strong>loadings</strong>: how much each original feature contributes. We pick them so that \(Z_1\) has the <strong>biggest possible variance</strong>. The constraint (squares add to 1) fixes the length of the weight vector: without it we could make the variance as big as we like just by using huge weights. So only the <em>direction</em> matters.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Rotate a line through the cloud</p><p class="lab-hint">Drag on the plot or use the slider. Every point drops onto the line; watch the spread of the dropped points.</p></div>
+        <div class="controls">
+          <label class="ctl">angle θ <input type="range" id="rot-a" min="0" max="179" value="100"><output></output></label>
+          <select id="rot-data" aria-label="Dataset"><option value="tilted">tilted oval</option><option value="hw">height &amp; weight</option><option value="round">round cloud</option></select>
+          <span class="grow"></span>
+          <button class="btn small" id="rot-snap">Snap to PC1</button>
+        </div>
+        <div class="lab-body"><div class="lab-grid">
+          <div class="plot" id="rot-plot"></div>
+          <div>
+            <div class="stats" id="rot-stats"></div>
+            <p class="kicker">Variance of the projections as the line turns</p>
+            <div class="plot" id="rot-curve"></div>
+            <p class="plot-cap" id="rot-formula" style="text-align:left;font-family:var(--mono)"></p>
+          </div>
+        </div></div>
+        <div class="lab-foot" id="rot-foot"></div>
+      </div>
+      <div class="callout tip"><span class="label">Two views of the same line</span><p>The direction that <strong>maximises the spread</strong> of the dropped points is also the direction that <strong>minimises the total squared length</strong> of the drop lines. PC1 is both the "most informative" direction and the line that hugs the data most closely. Watch both numbers in the lab: one peaks exactly where the other bottoms out.</p></div>
+      <p>Example: if \(Z_1 = 0.7 \times \text{height} + 0.7 \times \text{weight}\), then \(Z_1\) is basically "body size". Each person's value on it, \(z_{i1}\), is called their <strong>score</strong>.</p>
+    </section>
+
+    <section id="maths" class="chapter">
+      <h2><span class="chap">05</span>The same idea as maths</h2>
+      <p>Find the weights that make the new scores spread out as much as possible, while keeping the weights' length fixed:</p>
+      <div class="formula">$$\underset{\phi_{11},\dots,\phi_{p1}}{\text{maximize}} \left\{ \frac{1}{n}\sum_{i=1}^{n}\Big(\sum_{j=1}^{p}\phi_{j1}x_{ij}\Big)^{2} \right\} \quad \text{subject to} \quad \sum_{j=1}^{p}\phi_{j1}^{2}=1$$</div>
+      <dl class="symbols">
+        <dt>\(n,\ p\)</dt><dd>number of rows (observations) and columns (features)</dd>
+        <dt>\(x_{ij}\)</dt><dd>the (centred) value in row \(i\), column \(j\)</dd>
+        <dt>\(z_{i1}=\sum_j \phi_{j1}x_{ij}\)</dt><dd>the score of row \(i\) on PC1: where it lands on the line</dd>
+        <dt>\(\frac{1}{n}\sum_i z_{i1}^2\)</dt><dd>the variance of the scores (the data is centred, so the mean is 0)</dd>
+      </dl>
+      <p>We do not solve this by hand. It has an exact answer from linear algebra: the loadings are the <strong>eigenvectors</strong> of the covariance matrix (see <a href="#eigen">§12</a>).</p>
+    </section>
+
+    <section id="pc2" class="chapter">
+      <h2><span class="chap">06</span>PC2 and beyond</h2>
+      <p>After \(Z_1\), we want a second direction that adds <em>new</em> information. So \(Z_2\) is the direction with the most remaining variance that is <strong>uncorrelated</strong> with \(Z_1\). Geometrically: it is at a right angle (orthogonal) to PC1. \(Z_3\) is orthogonal to both, and so on. With \(p\) features there are at most \(p\) components.</p>
+      <div class="callout"><span class="label">Picture a rugby ball</span><p>PC1 points along the long axis. PC2 goes across the widest part. PC3 goes across the thinnest part.</p></div>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Shape the cloud, watch the axes</p><p class="lab-hint">Arrow length shows how much spread lies in that direction (2 standard deviations).</p></div>
+        <div class="controls">
+          <label class="ctl">stretch <input type="range" id="sh-a" min="5" max="40" value="28"><output></output></label>
+          <label class="ctl">width <input type="range" id="sh-b" min="2" max="30" value="9"><output></output></label>
+          <label class="ctl">tilt <input type="range" id="sh-r" min="0" max="179" value="30"><output></output></label>
+          <button class="btn ghost small" id="sh-new">New sample</button>
+        </div>
+        <div class="lab-body"><div class="lab-grid">
+          <div class="plot" id="sh-plot"></div>
+          <div>
+            <p class="kicker">Covariance matrix</p><div id="sh-cov" style="margin-bottom:1rem"></div>
+            <div class="stats" id="sh-stats"></div>
+            <div id="sh-bars"></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <section id="scaling" class="chapter">
+      <h2><span class="chap">07</span>Standardise first</h2>
+      <p>Store a distance as kilometres and as metres: same information, but the metre column's variance is a <strong>million</strong> times bigger, and PCA would think it is the most important feature. Scaling removes that unfair advantage. In scikit-learn: <code>StandardScaler</code> first, then <code>PCA</code>.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Commute distance vs commute time</p><p class="lab-hint">Change the units and the scaling; watch the PC1 loadings.</p></div>
+        <div class="controls">
+          <div class="seg" id="un-units"><button data-v="km" class="on">distance in km</button><button data-v="m">distance in metres</button></div>
+          <label class="check"><input type="checkbox" id="un-std"> standardise</label>
+        </div>
+        <div class="lab-body"><div class="lab-grid">
+          <div class="plot" id="un-plot"></div>
+          <div><div class="stats" id="un-stats"></div><p id="un-msg" style="font-size:.9rem;color:var(--ink-2)"></p></div>
+        </div></div>
+      </div>
+    </section>
+
+    <section id="how-many" class="chapter">
+      <h2><span class="chap">08</span>How many components? 3D → 2D → 1D</h2>
+      <p>This is the question students ask most. With \(p\) features you can keep anywhere from 1 to \(p\) components. Keep too few and you lose information; keep too many and you have not simplified anything. The answer depends on the <strong>shape</strong> of the data, which the <strong>proportion of variance explained (PVE)</strong> by each component reveals.</p>
+      <div class="formula">$$\text{PVE}_m = \frac{\lambda_m}{\lambda_1 + \lambda_2 + \dots + \lambda_p} \qquad \text{cumulative PVE}(k) = \sum_{m=1}^{k}\text{PVE}_m$$</div>
+      <p>Here \(\lambda_m\) is the variance along component \(m\). Pick a dataset, choose how many components to keep, and see what survives. Each dataset teaches a different lesson.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">The component chooser</p><p class="lab-hint">Drag the 3D view to rotate. Faint points are the originals; solid points are what you keep.</p></div>
+        <div class="controls">
+          <select id="hm-data" aria-label="Dataset">
+            <option value="sheet">A · flat sheet (3D that is really 2D)</option>
+            <option value="cigar">B · cigar (3D that is really 1D)</option>
+            <option value="ball">C · round ball (truly 3D)</option>
+            <option value="body">D · body measurements</option>
+            <option value="marks">E · student marks</option>
+            <option value="groups">F · two groups</option>
+            <option value="arc">G · twisted ring (PCA's blind spot)</option>
+          </select>
+          <div class="seg" id="hm-k"><button data-v="1">keep 1 PC</button><button data-v="2" class="on">keep 2 PCs</button><button data-v="3">keep 3 PCs</button></div>
+          <label class="check"><input type="checkbox" id="hm-std" checked> standardise</label>
+          <label class="check"><input type="checkbox" id="hm-spin" checked> rotate</label>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid even">
+            <div><div class="plot" id="hm-3d"></div><p class="plot-cap" id="hm-3dcap"></p></div>
+            <div><div class="plot" id="hm-low"></div><p class="plot-cap" id="hm-lowcap"></p></div>
+            <div><div class="plot" id="hm-scree"></div><p class="plot-cap"><b>Scree plot</b>: bars = PVE of each component, line = cumulative PVE</p></div>
+            <div>
+              <p class="kicker">What the rules say</p>
+              <div class="table-wrap" style="margin:0 0 .8rem"><table class="clean" id="hm-rules"></table></div>
+              <p class="kicker">Loadings (what each PC is made of)</p>
+              <div class="table-wrap" style="margin:0"><table class="matrix" id="hm-load"></table></div>
+            </div>
+          </div>
+        </div>
+        <div class="lab-foot" id="hm-foot"></div>
+      </div>
+      <h3>What each dataset teaches</h3>
+      <div class="table-wrap"><table class="clean">
+        <thead><tr><th>Dataset</th><th>Cumulative PVE (1, 2, 3 PCs)</th><th>Keep</th><th>Why</th></tr></thead>
+        <tbody id="hm-summary"></tbody>
+      </table></div>
+    </section>
+
+    <section id="recipe" class="chapter">
+      <h2><span class="chap">09</span>A recipe for choosing the number of components</h2>
+      <p>There is no single correct number, but there is a reliable routine. Use two or three rules together and let your <strong>purpose</strong> break ties.</p>
+      <div class="cards">
+        <div class="card"><span class="n">step 1</span><h4>Standardise</h4><p>Unless all columns share the same units and you want big-variance columns to count more.</p></div>
+        <div class="card"><span class="n">step 2</span><h4>Fit all components</h4><p><code>PCA()</code> with no <code>n_components</code>, then read <code>explained_variance_ratio_</code>.</p></div>
+        <div class="card"><span class="n">step 3</span><h4>Draw the scree plot</h4><p>Bars for PVE, a line for cumulative PVE.</p></div>
+        <div class="card"><span class="n">step 4</span><h4>Apply the rules</h4><p>Cumulative threshold, elbow and Kaiser (below). When they agree, you are done.</p></div>
+        <div class="card"><span class="n">step 5</span><h4>Let the purpose decide</h4><p>Plotting: 2 or 3. Feeding a model: cross-validate k. Compressing: pick the error you can accept.</p></div>
+        <div class="card"><span class="n">step 6</span><h4>Interpret</h4><p>Read the loadings. If a component means something ("size", "science ability"), that is a good sign.</p></div>
+      </div>
+      <div class="table-wrap"><table class="clean">
+        <thead><tr><th>Rule</th><th>How it works</th><th>Strength</th><th>Weakness</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Cumulative threshold</strong></td><td>Smallest k with cumulative PVE ≥ 80%, 90% or 95%</td><td>Simple, easy to explain</td><td>The threshold is arbitrary; on noisy data it can demand many PCs</td></tr>
+          <tr><td><strong>Elbow (scree)</strong></td><td>Keep the components before the curve flattens</td><td>Visual, adapts to the data</td><td>Elbows can be vague or appear twice</td></tr>
+          <tr><td><strong>Kaiser</strong></td><td>Keep components with eigenvalue \(\lambda > 1\) (standardised data only)</td><td>Automatic: a PC must explain more than one original column's worth</td><td>Tends to keep too many when p is large</td></tr>
+          <tr><td><strong>Purpose</strong></td><td>2–3 for plots; cross-validation for prediction; error budget for compression</td><td>Answers the real question</td><td>Needs a clear goal</td></tr>
+        </tbody>
+      </table></div>
+      <p>In scikit-learn you can ask for the threshold directly: <code>PCA(n_components=0.90)</code> keeps as many components as needed to explain 90% of the variance.</p>
+    </section>
+
+    <section id="wine" class="chapter">
+      <h2><span class="chap">10</span>Real data: 13 → 2</h2>
+      <p>The wine dataset has 178 wines from three cultivars (grape growers) and 13 chemical measurements: alcohol, acidity, colour intensity, and so on. Thirteen columns cannot be plotted. PCA on standardised data can show them in 2D.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Wine: scree plot and biplot</p><p class="lab-hint">Slide k to see how much each extra component adds. Hover the biplot for details.</p></div>
+        <div class="controls">
+          <label class="ctl">keep k <input type="range" id="wn-k" min="1" max="13" value="2"><output></output></label>
+          <label class="check"><input type="checkbox" id="wn-col" checked> colour by cultivar (hidden from PCA)</label>
+          <label class="check"><input type="checkbox" id="wn-arrows" checked> loading arrows</label>
+          <label class="check"><input type="checkbox" id="wn-std" checked> standardise</label>
+        </div>
+        <div class="lab-body"><div class="lab-grid even">
+          <div><div class="plot" id="wn-scree"></div><div class="stats" id="wn-stats" style="margin-top:.8rem"></div></div>
+          <div><div class="plot" id="wn-bi"></div><p class="plot-cap"><b>Biplot</b>: scores on PC1 and PC2 with loading arrows</p></div>
+        </div></div>
+        <div class="lab-foot" id="wn-foot"></div>
+      </div>
+    </section>
+
+    <section id="compress" class="chapter">
+      <h2><span class="chap">11</span>PCA as compression</h2>
+      <p>Treat each row of a greyscale image as an observation and each pixel column as a feature: 96 rows × 96 features. Keep only k components and rebuild the picture from them. This is the same idea used to compress faces before training a classifier.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Rebuild an image from k components</p><p class="lab-hint">Most of the picture comes back with very few components.</p></div>
+        <div class="controls"><label class="ctl">components k <input type="range" id="im-k" min="1" max="60" value="8"><output></output></label></div>
+        <div class="lab-body"><div class="lab-grid three">
+          <div><div class="plot" id="im-orig"></div><p class="plot-cap"><b>Original</b> (96 × 96 pixels)</p></div>
+          <div><div class="plot" id="im-rec"></div><p class="plot-cap" id="im-cap"></p></div>
+          <div><div class="stats" id="im-stats"></div><div class="plot" id="im-cum"></div></div>
+        </div></div>
+      </div>
+    </section>
+
+    <section id="eigen" class="chapter">
+      <h2><span class="chap">12</span>Under the hood: eigenvectors</h2>
+      <p>For centred data \(X\) (n × p), the covariance matrix is \(\Sigma = \frac{1}{n-1}X^\top X\). Its eigenvectors and eigenvalues give everything PCA needs:</p>
+      <div class="formula">$$\Sigma\,\phi_m = \lambda_m\,\phi_m, \qquad \lambda_1 \ge \lambda_2 \ge \dots \ge \lambda_p \ge 0$$</div>
+      <ul class="prose">
+        <li>The eigenvector \(\phi_m\) holds the <strong>loadings</strong> of component \(m\) (a direction of length 1).</li>
+        <li>The eigenvalue \(\lambda_m\) is the <strong>variance</strong> of the scores along that direction, so \(\text{PVE}_m = \lambda_m / \sum_j \lambda_j\).</li>
+        <li>Eigenvectors of a symmetric matrix are orthogonal: that is why PCs are at right angles and their scores are uncorrelated.</li>
+        <li>The scores are \(Z = X\Phi\); keeping the first k columns of \(\Phi\) is the reduction, and \(X \approx Z_k\Phi_k^\top\) is the reconstruction.</li>
+      </ul>
+      <details class="deeper">
+        <summary>SVD: how libraries actually compute it <span class="tag">dive deeper</span></summary>
+        <div class="body">
+          <p>scikit-learn does not form \(\Sigma\). It computes the singular value decomposition \(X = U S V^\top\) of the centred data directly, which is more accurate. The columns of \(V\) are the loadings, the scores are \(US\), and the variances are \(\lambda_m = s_m^2/(n-1)\). Same answer, better numerics.</p>
+          <p>Also note that the <em>sign</em> of a component is arbitrary: \(\phi\) and \(-\phi\) describe the same line. Two programs may show your plot mirrored; nothing is wrong.</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="limits" class="chapter">
+      <h2><span class="chap">13</span>Limits and pitfalls</h2>
+      <div class="pros-cons">
+        <div><h4>PCA is great when</h4><ul><li>Features are correlated (redundant)</li><li>You need a 2D or 3D picture of many columns</li><li>You want fewer, uncorrelated inputs for another model</li><li>You need a fast, deterministic method</li></ul></div>
+        <div><h4>Watch out for</h4><ul><li>Different units: standardise first</li><li>Curved structure: PCA only finds flat directions (dataset G, the twisted ring)</li><li>Outliers: they inflate variance and pull the axes</li><li>Interpretation: PCs are mixtures and may have no clear meaning</li><li>Max variance ≠ best for prediction: a low-variance PC can still matter for y</li></ul></div>
+      </div>
+      <p>For curved structure, non-linear methods such as kernel PCA, t-SNE and UMAP exist; they are mainly used for visualisation. See <a href="beyond.html#next">where to go next</a>.</p>
+    </section>
+
+    <section id="quiz" class="chapter">
+      <h2><span class="chap">14</span>Check yourself</h2>
+      <div class="quiz" id="quiz-box"></div>
+      <p class="quiz-score" id="quiz-box-score"></p>
+      <a class="next-card" href="beyond.html">
+        <span class="next-eyebrow">Dive deeper</span>
+        <span class="next-title">Beyond the lecture →</span>
+        <span class="next-text">DBSCAN, Gaussian mixtures, and every method on every dataset.</span>
+      </a>
+    </section>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <img class="footer-logo" src="assets/img/utb-logo.svg" alt="" onerror="this.remove()">
+    <div>
+      <p><strong>Unsupervised Lab</strong>: an open, interactive companion to <em>CSIT843A Lecture 4: Unsupervised Learning</em>.</p>
+      <p>Created by <strong>Eng. Saeed Serwan Abdulsattar</strong>, College of Computer Studies, University of Technology Bahrain.</p>
+      <p><a href="https://github.com/SaeedSerwan/unsupervised" target="_blank" rel="noopener">Source on GitHub</a> · MIT License</p>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/vendor/katex/katex.min.js"></script>
+<script src="assets/vendor/katex/auto-render.min.js"></script>
+<script src="assets/js/lib.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/pca.js"></script>
+</body>
+</html>

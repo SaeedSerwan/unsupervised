@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>K-means Clustering · Unsupervised Lab</title>
+  <meta name="description" content="Interactive K-means: the objective, the assign/update algorithm, local minima, choosing K with the elbow and silhouette, scaling and K-means++.">
+  <meta name="author" content="Eng. Saeed Serwan Abdulsattar">
+  <meta property="og:title" content="K-means Clustering · Unsupervised Lab">
+  <meta property="og:description" content="Interactive K-means: the objective, the assign/update algorithm, local minima, choosing K with the elbow and silhouette, scaling and K-means++.">
+  <meta property="og:image" content="assets/img/favicon-512.png">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" type="image/svg+xml" href="assets/img/utb-logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/img/favicon-180.png">
+  <link rel="stylesheet" href="assets/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html">
+    <img class="brand-logo" src="assets/img/utb-logo.svg" alt="University of Technology Bahrain logo" onerror="this.remove()">
+    <span class="brand-title">Unsupervised Lab</span>
+  </a>
+  <nav class="page-tabs" aria-label="Lessons">
+    <a href="index.html">Overview</a>
+    <a href="kmeans.html" class="active" aria-current="page">K-means</a>
+    <a href="hierarchical.html">Hierarchical</a>
+    <a href="pca.html">PCA</a>
+    <a href="beyond.html">Beyond the lecture</a>
+    <a href="code-clustering.html">Clustering in Python</a>
+    <a href="code-pca.html">PCA in Python</a>
+  </nav>
+  <nav class="top-links">
+    <a href="https://github.com/SaeedSerwan/unsupervised" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+  </nav>
+</header>
+
+<div class="layout">
+  <aside class="toc" aria-label="Contents">
+    <p class="toc-title">K-means</p>
+    <ol>
+      <li><a href="#idea">The idea</a></li>
+      <li><a href="#objective">What makes a good clustering?</a></li>
+      <li><a href="#search">Why not try every split?</a></li>
+      <li><a href="#algorithm">The algorithm, step by step</a></li>
+      <li><a href="#local">Local minima</a></li>
+      <li><a href="#choose-k">Choosing K</a></li>
+      <li><a href="#scaling">Scale your features</a></li>
+      <li><a href="#shapes">Where K-means fails</a></li>
+      <li><a href="#plusplus">Smarter starts: K-means++</a></li>
+      <li><a href="#iris">Checking against known labels</a></li>
+      <li><a href="#summary">Pros and cons</a></li>
+      <li><a href="#quiz">Check yourself</a></li>
+    </ol>
+  </aside>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Part 1 · Clustering · Centroid-based</p>
+      <h1>K-means, <em>one step at a time.</em></h1>
+      <p class="lead">K-means splits the data into \(K\) groups, where \(K\) is a number you choose. It is simple, fast, and usually the first clustering method people try. Here you will drag centroids yourself, watch the algorithm run, see it get stuck, and learn how to choose \(K\).</p>
+      <div class="learn-grid">
+        <div><span class="num">01</span>State the K-means objective and read its formula</div>
+        <div><span class="num">02</span>Run the assign / update loop by hand</div>
+        <div><span class="num">03</span>Explain local minima and why we restart</div>
+        <div><span class="num">04</span>Choose K with the elbow and silhouette methods</div>
+        <div><span class="num">05</span>Know when K-means fails, and what to do</div>
+      </div>
+    </section>
+
+    <section id="idea" class="chapter">
+      <h2><span class="chap">01</span>The idea</h2>
+      <p>Choose a number \(K\), for example \(K = 3\): "give me three groups". K-means then follows two rules:</p>
+      <ol class="prose">
+        <li><strong>Every point is in some cluster.</strong> Nobody is left out.</li>
+        <li><strong>No point is in two clusters at once.</strong></li>
+      </ol>
+      <p>Together: every point is in <em>exactly one</em> cluster. Mathematically, the clusters \(C_1, \dots, C_K\) form a <strong>partition</strong> of the data:</p>
+      <div class="formula">$$C_1 \cup C_2 \cup \dots \cup C_K = \{1, \dots, n\} \qquad C_k \cap C_{k'} = \varnothing \ \text{ for } k \neq k'$$</div>
+    </section>
+
+    <section id="objective" class="chapter">
+      <h2><span class="chap">02</span>What makes a good clustering?</h2>
+      <p>We want each cluster to be <strong>tight</strong>: its points close to each other. K-means gives that idea a number, the <strong>within-cluster variation</strong> \(W(C_k)\). Big \(W\) means a loose, messy cluster; small \(W\) means a tight one.</p>
+      <div class="formula">$$W(C_k) = \frac{1}{|C_k|} \sum_{i, i' \in C_k} \sum_{j=1}^{p} \left(x_{ij} - x_{i'j}\right)^2$$</div>
+      <dl class="symbols">
+        <dt>\(C_k\)</dt><dd>the \(k\)-th cluster: the set of points assigned to it</dd>
+        <dt>\(|C_k|\)</dt><dd>how many points are in cluster \(k\) (the bars mean "size of the set")</dd>
+        <dt>\(i,\ i'\)</dt><dd>any two points in the same cluster</dd>
+        <dt>\(\sum_j (x_{ij} - x_{i'j})^2\)</dt><dd>squared Euclidean distance between them, over all \(p\) features</dd>
+      </dl>
+      <p>So: take every pair of points in the cluster, add up their squared distances, and divide by the cluster size. K-means looks for the clusters that make the <strong>total</strong> as small as possible:</p>
+      <div class="formula">$$\underset{C_1, \dots, C_K}{\text{minimize}} \ \left\{ \sum_{k=1}^{K} W(C_k) \right\}$$</div>
+      <div class="callout"><span class="label">Link to regression</span><p>In regression we minimised the sum of squared residuals. Here we minimise a sum of squared distances inside clusters. Same idea, new use. And again we square so that distances never cancel.</p></div>
+
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Be the algorithm</p><p class="lab-hint">Drag the ✕ centroids. Each point joins its nearest centroid. Make the total W as small as you can.</p></div>
+        <div class="controls">
+          <label class="ctl">K <input type="range" id="be-k" min="2" max="6" value="3"><output></output></label>
+          <select id="be-data" aria-label="Dataset"><option value="blobs3">3 blobs</option><option value="blobs4">4 blobs</option><option value="varied">uneven blobs</option><option value="uniform">no structure</option></select>
+          <span class="grow"></span>
+          <div class="btn-row"><button class="btn ghost small" id="be-shuffle">Scatter centroids</button><button class="btn small" id="be-best">Show K-means answer</button></div>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid">
+            <div class="plot" id="be-plot"></div>
+            <div>
+              <div class="stats" id="be-stats"></div>
+              <div id="be-bars"></div>
+              <p class="plot-cap" id="be-msg" style="text-align:left"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <details class="deeper">
+        <summary>Why does the centroid appear if the formula only uses pairs? <span class="tag">dive deeper</span></summary>
+        <div class="body">
+          <p>A neat identity links the pairwise formula to the distance from each point to its cluster mean \(\bar{x}_{k}\) (the centroid):</p>
+          <div class="formula">$$\frac{1}{|C_k|}\sum_{i,i' \in C_k}\sum_{j=1}^{p}(x_{ij}-x_{i'j})^2 \;=\; 2\sum_{i\in C_k}\sum_{j=1}^{p}(x_{ij}-\bar{x}_{kj})^2$$</div>
+          <p>So minimising \(W\) is the same as minimising the squared distance of every point to its own centroid. That is why the algorithm below works with centroids, and why scikit-learn reports <code>inertia_</code>: the right-hand sum without the factor 2. In this lab, "total W" uses the lecture's pairwise formula (so it equals 2 × inertia).</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="search" class="chapter">
+      <h2><span class="chap">03</span>Why not try every split?</h2>
+      <p>Why not test every possible way to split the points and keep the best? Because the number of splits explodes. Move the sliders.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Counting the ways</p><p class="lab-hint">Brute force is hopeless beyond a handful of points.</p></div>
+        <div class="controls">
+          <label class="ctl">points n <input type="range" id="cnt-n" min="2" max="200" value="10"><output></output></label>
+          <label class="ctl">clusters K <input type="range" id="cnt-k" min="2" max="10" value="3"><output></output></label>
+        </div>
+        <div class="lab-body"><div class="stats" id="cnt-stats" style="margin:0"></div></div>
+        <div class="lab-foot" id="cnt-foot"></div>
+      </div>
+      <p>So we use a smart shortcut: an <strong>iterative</strong> algorithm that improves the clusters step by step. It is fast, but it finds a <strong>local minimum</strong>: a good answer, not always the best possible one.</p>
+    </section>
+
+    <section id="algorithm" class="chapter">
+      <h2><span class="chap">04</span>The algorithm, step by step</h2>
+      <p>K-means has only two moves, repeated until nothing changes:</p>
+      <div class="cards">
+        <div class="card"><span class="n">step 1 · start</span><h4>Random assignment</h4><p>Give every point a random cluster number from 1 to K.</p></div>
+        <div class="card"><span class="n">step 2a · update</span><h4>Compute centroids</h4><p>For each cluster, the centroid is the average point. Points (2, 4) and (4, 6) have centroid (3, 5).</p></div>
+        <div class="card"><span class="n">step 2b · assign</span><h4>Join the nearest</h4><p>Every point looks at all centroids and joins the nearest one. Repeat 2a and 2b until no point changes cluster.</p></div>
+      </div>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">K-means stepper</p><p class="lab-hint">Press Step to make one move at a time, or Play to watch it run.</p></div>
+        <div class="controls">
+          <select id="st-data" aria-label="Dataset">
+            <option value="blobs3">3 blobs</option><option value="blobs4">4 blobs</option><option value="many">15 blobs</option><option value="varied">uneven blobs</option>
+            <option value="aniso">stretched blobs</option><option value="moons">two moons</option><option value="circles">circles</option><option value="uniform">no structure</option>
+          </select>
+          <label class="ctl">K <input type="range" id="st-k" min="1" max="15" value="3"><output></output></label>
+          <select id="st-init" aria-label="Initialisation"><option value="partition">start: random labels (lecture)</option><option value="forgy">start: random points</option><option value="plusplus">start: K-means++</option></select>
+          <label class="check"><input type="checkbox" id="st-regions" checked> regions</label>
+          <label class="check"><input type="checkbox" id="st-trails" checked> trails</label>
+          <span class="grow"></span>
+          <div class="btn-row"><button class="btn ghost small" id="st-reset">New start</button><button class="btn ghost small" id="st-step">Step</button><button class="btn small" id="st-play">Play</button></div>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid">
+            <div><div class="plot" id="st-plot"></div></div>
+            <div>
+              <p class="kicker">Now</p>
+              <p id="st-phase" style="font-weight:500;margin:0 0 .3rem">Step 1</p>
+              <p id="st-explain" style="font-size:.9rem;color:var(--ink-2);min-height:4.6em"></p>
+              <div class="stats" id="st-stats"></div>
+              <p class="kicker" style="margin-top:.6rem">Objective after each assignment</p>
+              <div class="plot" id="st-obj"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="callout"><span class="label">Quick check</span><p>A cluster has points (1, 1), (3, 1) and (2, 4). What is its centroid? <em>Average each coordinate: ((1+3+2)/3, (1+1+4)/3) = (2, 2).</em></p></div>
+      <details class="deeper">
+        <summary>Why is K-means guaranteed to stop? <span class="tag">dive deeper</span></summary>
+        <div class="body">
+          <p>Each move can only lower the objective or leave it unchanged. In step 2a, the mean is the point that minimises the sum of squared distances to a set of points, so moving the centroid there cannot increase it. In step 2b, moving a point to a nearer centroid also cannot increase it. Since there is a finite number of possible partitions and the objective never goes up, the algorithm must stop. Watch the objective chart in the stepper: it never rises.</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="local" class="chapter">
+      <h2><span class="chap">05</span>Local minima: run it many times</h2>
+      <p>Good news: each step lowers the objective, so K-means always stops. Bad news: it stops at a <strong>local minimum</strong> that depends on the random start. Below are six runs on the same data with different random starts. The number above each is the objective. Lower is better.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Six random starts</p><p class="lab-hint">The best run has a dark frame.</p></div>
+        <div class="controls">
+          <select id="lm-data" aria-label="Dataset"><option value="blobs4">4 blobs</option><option value="many">15 blobs</option><option value="varied">uneven blobs</option></select>
+          <label class="ctl">K <input type="range" id="lm-k" min="2" max="15" value="4"><output></output></label>
+          <select id="lm-init" aria-label="Initialisation"><option value="forgy">start: random points</option><option value="partition">start: random labels</option><option value="plusplus">start: K-means++</option></select>
+          <span class="grow"></span>
+          <button class="btn small" id="lm-run">Six new starts</button>
+        </div>
+        <div class="lab-body"><div class="lab-grid three" id="lm-grid"></div></div>
+        <div class="lab-foot" id="lm-foot"></div>
+      </div>
+      <div class="callout tip"><span class="label">In practice</span><p>Run K-means many times and keep the run with the smallest objective. scikit-learn does this for you with <code>n_init</code> (10 random starts by default with random init).</p></div>
+    </section>
+
+    <section id="choose-k" class="chapter">
+      <h2><span class="chap">06</span>Choosing K</h2>
+      <p>K-means needs \(K\) before it starts, but in real problems nobody tells us how many groups there are. Two common tools help:</p>
+      <ul class="prose">
+        <li><strong>Elbow method.</strong> Run K = 1, 2, 3, … and plot the objective. It always falls as K grows (more centroids, tighter clusters), so look for the <em>elbow</em>: where it stops dropping fast.</li>
+        <li><strong>Silhouette score.</strong> For each point, compare \(a\) = its average distance to its own cluster with \(b\) = its average distance to the nearest other cluster: \(s = (b - a)/\max(a, b)\). Near 1: well placed. Near 0: on a border. Negative: probably in the wrong cluster. Pick the K with the highest average.</li>
+      </ul>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Elbow and silhouette</p><p class="lab-hint">Click a K on either chart to see that clustering.</p></div>
+        <div class="controls">
+          <select id="ck-data" aria-label="Dataset"><option value="blobs4">4 blobs</option><option value="blobs3">3 blobs</option><option value="varied">uneven blobs</option><option value="blobs5">5 close blobs</option><option value="uniform">no structure</option><option value="moons">two moons</option></select>
+          <span class="status" id="ck-status"></span>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid even">
+            <div><div class="plot" id="ck-elbow"></div><p class="plot-cap"><b>Elbow</b>: total within-cluster variation vs K</p></div>
+            <div><div class="plot" id="ck-sil"></div><p class="plot-cap"><b>Silhouette</b>: average score vs K (higher is better)</p></div>
+            <div><div class="plot" id="ck-scatter"></div><p class="plot-cap" id="ck-cap"></p></div>
+            <div><div class="plot" id="ck-silbars"></div><p class="plot-cap"><b>Silhouette of every point</b>, grouped by cluster and sorted</p></div>
+          </div>
+        </div>
+        <div class="lab-foot" id="ck-foot"></div>
+      </div>
+      <div class="callout warn"><span class="label">Be honest</span><p>Neither tool is a proof. On "no structure" data the silhouette still picks some K, and K-means happily returns clusters. Always ask whether the groups make sense to someone who knows the domain.</p></div>
+    </section>
+
+    <section id="scaling" class="chapter">
+      <h2><span class="chap">07</span>Scale your features first</h2>
+      <p>K-means uses plain Euclidean distance, so a feature measured in big numbers dominates. Here, monthly income is in Bahraini dinars (hundreds to thousands) and age is in years (tens). Without scaling, income decides everything.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Customers: income vs age</p><p class="lab-hint">Same data, same K = 4. Only the scaling changes.</p></div>
+        <div class="controls">
+          <div class="seg" id="sc-mode"><button data-v="raw" class="on">Raw units</button><button data-v="std">Standardised (z-scores)</button></div>
+          <label class="check"><input type="checkbox" id="sc-view"> show in the space K-means sees</label>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid">
+            <div class="plot" id="sc-plot"></div>
+            <div><div class="stats" id="sc-stats"></div><p id="sc-msg" style="font-size:.9rem;color:var(--ink-2)"></p></div>
+          </div>
+        </div>
+      </div>
+      <p>Standardising means: subtract each column's mean and divide by its standard deviation, \(z = (x - \bar{x}) / s\). Every column then has mean 0 and spread 1, so each feature gets a fair vote. In scikit-learn: <code>StandardScaler</code> before <code>KMeans</code>.</p>
+    </section>
+
+    <section id="shapes" class="chapter">
+      <h2><span class="chap">08</span>Where K-means fails</h2>
+      <p>K-means assigns every point to its nearest centre, so it always carves the space into straight-edged regions around centres. That works for round, similar-sized blobs and fails for curved, stretched or nested shapes. Remember the two moons?</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">K-means on six kinds of data</p><p class="lab-hint">Best of 10 starts each, with the true number of groups as K.</p></div>
+        <div class="lab-body"><div class="lab-grid three" id="fail-grid"></div></div>
+      </div>
+      <p>For curved shapes, try <a href="hierarchical.html#linkage-compare">single-linkage hierarchical clustering</a> or <a href="beyond.html#dbscan">DBSCAN</a>. For stretched blobs, try <a href="beyond.html#gmm">Gaussian mixtures</a>.</p>
+    </section>
+
+    <section id="plusplus" class="chapter">
+      <h2><span class="chap">09</span>Smarter starts: K-means++</h2>
+      <p>Bad starts cause bad local minima. <strong>K-means++</strong> chooses starting centroids that are spread out: the first is a random point; each next one is chosen at random with probability proportional to \(D(x)^2\), the squared distance to the nearest centroid already chosen. Far-away points are much more likely to be picked. It is the default in scikit-learn (<code>init="k-means++"</code>).</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">K-means++ seeding</p><p class="lab-hint">Point size and darkness show the chance of being picked next.</p></div>
+        <div class="controls">
+          <select id="pp-data" aria-label="Dataset"><option value="many">15 blobs</option><option value="blobs4">4 blobs</option></select>
+          <span class="grow"></span>
+          <div class="btn-row"><button class="btn ghost small" id="pp-reset">Restart</button><button class="btn small" id="pp-next">Pick next centre</button></div>
+        </div>
+        <div class="lab-body"><div class="lab-grid"><div class="plot" id="pp-plot"></div><div><div class="stats" id="pp-stats"></div><p id="pp-msg" style="font-size:.9rem;color:var(--ink-2)"></p></div></div></div>
+      </div>
+    </section>
+
+    <section id="iris" class="chapter">
+      <h2><span class="chap">10</span>Checking against known labels</h2>
+      <p>A classic way to test a clustering method: take data whose labels we know, <em>hide the labels</em>, cluster, then compare. The iris dataset has 150 flowers from 3 species and 4 measurements. K-means sees only the measurements.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Iris: K-means vs true species</p><p class="lab-hint">K-means uses all four measurements; choose which two to draw.</p></div>
+        <div class="controls">
+          <label class="ctl">x <select id="ir-x"></select></label>
+          <label class="ctl">y <select id="ir-y"></select></label>
+          <label class="check"><input type="checkbox" id="ir-std"> standardise first</label>
+        </div>
+        <div class="lab-body">
+          <div class="lab-grid even">
+            <div><div class="plot" id="ir-km"></div><p class="plot-cap"><b>K-means clusters</b> (K = 3, labels hidden)</p></div>
+            <div><div class="plot" id="ir-true"></div><p class="plot-cap"><b>True species</b></p></div>
+          </div>
+          <div class="lab-grid" style="margin-top:1rem"><div class="table-wrap" style="margin:0"><table class="matrix" id="ir-conf"></table></div><p id="ir-msg" style="font-size:.9rem;color:var(--ink-2);margin:0"></p></div>
+        </div>
+      </div>
+      <p>Setosa is separated perfectly. Versicolor and virginica overlap a little, so K-means mixes some of them up. In real problems we do not have the labels, so this is a check for the <em>method</em>, not something we can do every time.</p>
+    </section>
+
+    <section id="summary" class="chapter">
+      <h2><span class="chap">11</span>Pros and cons</h2>
+      <div class="pros-cons">
+        <div><h4>Pros</h4><ul><li>Very simple to understand and explain</li><li>Very fast, even for large data</li><li>Always converges</li><li>Centroids are easy to interpret ("the average customer of group 2")</li></ul></div>
+        <div><h4>Cons</h4><ul><li>Results change with the random start: run it many times</li><li>Needs scaled features; prefers round, similar-sized clusters</li><li>You must choose K yourself</li><li>Every point is forced into a cluster, even outliers</li></ul></div>
+      </div>
+    </section>
+
+    <section id="quiz" class="chapter">
+      <h2><span class="chap">12</span>Check yourself</h2>
+      <div class="quiz" id="quiz-box"></div>
+      <p class="quiz-score" id="quiz-box-score"></p>
+      <a class="next-card" href="hierarchical.html">
+        <span class="next-eyebrow">Next</span>
+        <span class="next-title">Hierarchical clustering →</span>
+        <span class="next-text">No K up front: build a family tree of the data, then cut it.</span>
+      </a>
+    </section>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <img class="footer-logo" src="assets/img/utb-logo.svg" alt="" onerror="this.remove()">
+    <div>
+      <p><strong>Unsupervised Lab</strong>: an open, interactive companion to <em>CSIT843A Lecture 4: Unsupervised Learning</em>.</p>
+      <p>Created by <strong>Eng. Saeed Serwan Abdulsattar</strong>, College of Computer Studies, University of Technology Bahrain.</p>
+      <p><a href="https://github.com/SaeedSerwan/unsupervised" target="_blank" rel="noopener">Source on GitHub</a> · MIT License</p>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/vendor/katex/katex.min.js"></script>
+<script src="assets/vendor/katex/auto-render.min.js"></script>
+<script src="assets/js/lib.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/kmeans.js"></script>
+</body>
+</html>

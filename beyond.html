@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beyond the Lecture: DBSCAN, Gaussian Mixtures and More · Unsupervised Lab</title>
+  <meta name="description" content="Go further: DBSCAN density clustering, Gaussian mixture models with the EM algorithm, and every clustering method compared on every dataset.">
+  <meta name="author" content="Eng. Saeed Serwan Abdulsattar">
+  <meta property="og:title" content="Beyond the Lecture: DBSCAN, Gaussian Mixtures and More · Unsupervised Lab">
+  <meta property="og:description" content="Go further: DBSCAN density clustering, Gaussian mixture models with the EM algorithm, and every clustering method compared on every dataset.">
+  <meta property="og:image" content="assets/img/favicon-512.png">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" type="image/svg+xml" href="assets/img/utb-logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/img/favicon-180.png">
+  <link rel="stylesheet" href="assets/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html">
+    <img class="brand-logo" src="assets/img/utb-logo.svg" alt="University of Technology Bahrain logo" onerror="this.remove()">
+    <span class="brand-title">Unsupervised Lab</span>
+  </a>
+  <nav class="page-tabs" aria-label="Lessons">
+    <a href="index.html">Overview</a>
+    <a href="kmeans.html">K-means</a>
+    <a href="hierarchical.html">Hierarchical</a>
+    <a href="pca.html">PCA</a>
+    <a href="beyond.html" class="active" aria-current="page">Beyond the lecture</a>
+    <a href="code-clustering.html">Clustering in Python</a>
+    <a href="code-pca.html">PCA in Python</a>
+  </nav>
+  <nav class="top-links">
+    <a href="https://github.com/SaeedSerwan/unsupervised" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+  </nav>
+</header>
+
+<div class="layout">
+  <aside class="toc" aria-label="Contents">
+    <p class="toc-title">Beyond the lecture</p>
+    <ol>
+      <li><a href="#dbscan">DBSCAN: clusters by density</a></li>
+      <li><a href="#gmm">Gaussian mixtures: soft clusters</a></li>
+      <li><a href="#compare">Every method, every dataset</a></li>
+      <li><a href="#which">Which method should I use?</a></li>
+      <li><a href="#next">Where to go next</a></li>
+      <li><a href="#quiz">Check yourself</a></li>
+    </ol>
+  </aside>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Dive deeper · Not examined in Lecture 4</p>
+      <h1>Beyond the lecture, <em>for the curious.</em></h1>
+      <p class="lead">K-means and hierarchical clustering are the foundations. Two more methods fix their best-known weaknesses: <strong>DBSCAN</strong> finds clusters of any shape and labels outliers as noise, and <strong>Gaussian mixture models</strong> handle stretched clusters and give soft, probabilistic memberships. Then we put every method on every dataset, side by side.</p>
+      <div class="learn-grid">
+        <div><span class="num">01</span>Explain core, border and noise points</div>
+        <div><span class="num">02</span>Choose DBSCAN's eps with a k-distance plot</div>
+        <div><span class="num">03</span>Watch the EM algorithm fit a Gaussian mixture</div>
+        <div><span class="num">04</span>Pick a clustering method for a given data shape</div>
+      </div>
+    </section>
+
+    <section id="dbscan" class="chapter">
+      <h2><span class="chap">01</span>DBSCAN: clusters by density</h2>
+      <p><strong>DBSCAN</strong> (Density-Based Spatial Clustering of Applications with Noise) says a cluster is a <em>dense region</em> of points, separated from other clusters by sparse regions. It needs two settings instead of K:</p>
+      <ul class="prose">
+        <li>\(\varepsilon\) (<code>eps</code>): the radius of a point's neighbourhood.</li>
+        <li><code>min_samples</code>: how many points (including itself) must fall inside that radius to count as "dense".</li>
+      </ul>
+      <div class="cards">
+        <div class="card"><span class="n">●</span><h4>Core point</h4><p>Has at least <code>min_samples</code> points within \(\varepsilon\). Clusters grow from core points.</p></div>
+        <div class="card"><span class="n">○</span><h4>Border point</h4><p>Not core itself, but within \(\varepsilon\) of a core point. Joins that cluster.</p></div>
+        <div class="card"><span class="n">✕</span><h4>Noise</h4><p>Neither core nor near a core point. Left unclustered: an outlier.</p></div>
+      </div>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">DBSCAN playground</p><p class="lab-hint">Hover a point to see its ε-neighbourhood.</p></div>
+        <div class="controls">
+          <select id="db-data" aria-label="Dataset"><option value="moons">two moons</option><option value="circles">circles</option><option value="noisy">blobs with noise</option><option value="blobs">3 blobs</option><option value="aniso">stretched blobs</option><option value="varied">uneven blobs</option></select>
+          <label class="ctl">ε <input type="range" id="db-eps" min="10" max="200" value="75"><output></output></label>
+          <label class="ctl">min_samples <input type="range" id="db-min" min="2" max="20" value="5"><output></output></label>
+        </div>
+        <div class="lab-body"><div class="lab-grid">
+          <div><div class="plot" id="db-plot"></div><div class="legend" id="db-legend"></div></div>
+          <div>
+            <div class="stats" id="db-stats"></div>
+            <p class="kicker">k-distance plot: how to choose ε</p>
+            <div class="plot" id="db-k"></div>
+            <p style="font-size:.86rem;color:var(--ink-2);margin:.5rem 0 0">Each point's distance to its <code>min_samples</code>-th nearest neighbour, sorted. A good ε sits at the <strong>knee</strong>, where the curve shoots up: below it are points inside clusters, above it are outliers. The dashed line is your current ε.</p>
+          </div>
+        </div></div>
+        <div class="lab-foot" id="db-foot"></div>
+      </div>
+      <div class="pros-cons">
+        <div><h4>Strengths</h4><ul><li>No K: the number of clusters is discovered</li><li>Any shape: moons, rings, snakes</li><li>Labels outliers as noise instead of forcing them into a cluster</li></ul></div>
+        <div><h4>Weaknesses</h4><ul><li>One ε for the whole dataset: struggles when clusters have different densities</li><li>Sensitive to ε; needs scaled features</li><li>Distances lose meaning in high dimensions (reduce with PCA first)</li></ul></div>
+      </div>
+    </section>
+
+    <section id="gmm" class="chapter">
+      <h2><span class="chap">02</span>Gaussian mixtures: soft clusters</h2>
+      <p>A <strong>Gaussian mixture model</strong> (GMM) assumes the data was generated by K bell-shaped (Gaussian) clouds, each with its own centre, shape and size. It is <em>model-based</em> and <em>soft</em>: every point gets a probability of belonging to each cluster, like the 70% student / 30% family customer from the <a href="index.html#families">overview</a>.</p>
+      <p>It is fitted with the <strong>EM algorithm</strong>, which looks a lot like K-means:</p>
+      <div class="cards">
+        <div class="card"><span class="n">E-step · like "assign"</span><h4>Expectation</h4><p>For every point, compute the probability that each Gaussian produced it (its <em>responsibilities</em>). Soft, not hard.</p></div>
+        <div class="card"><span class="n">M-step · like "update"</span><h4>Maximisation</h4><p>Re-estimate each Gaussian's mean, covariance (shape) and weight from the points, weighted by their responsibilities.</p></div>
+      </div>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">EM, step by step</p><p class="lab-hint">Ellipses show 1 and 2 standard deviations. Colours blend by probability. Hover a point.</p></div>
+        <div class="controls">
+          <select id="gm-data" aria-label="Dataset"><option value="aniso">stretched blobs</option><option value="varied">uneven blobs</option><option value="overlap">overlapping blobs</option><option value="moons">two moons</option></select>
+          <label class="ctl">K <input type="range" id="gm-k" min="1" max="6" value="3"><output></output></label>
+          <div class="seg" id="gm-view"><button data-v="soft" class="on">soft colours</button><button data-v="hard">hard (most likely)</button></div>
+          <span class="grow"></span>
+          <div class="btn-row"><button class="btn ghost small" id="gm-reset">New start</button><button class="btn ghost small" id="gm-step">E + M step</button><button class="btn small" id="gm-play">Play</button></div>
+        </div>
+        <div class="lab-body"><div class="lab-grid">
+          <div class="plot" id="gm-plot"></div>
+          <div>
+            <div class="stats" id="gm-stats"></div>
+            <p class="kicker">Log-likelihood (higher is better)</p>
+            <div class="plot" id="gm-ll"></div>
+            <p id="gm-msg" style="font-size:.88rem;color:var(--ink-2);margin:.6rem 0 0"></p>
+          </div>
+        </div></div>
+      </div>
+      <details class="deeper">
+        <summary>K-means is a special case of a GMM <span class="tag">dive deeper</span></summary>
+        <div class="body"><p>Force every Gaussian to be round with the same tiny variance, give every cluster the same weight, and turn the soft responsibilities into hard 0/1 choices: the E-step becomes "join the nearest centre" and the M-step becomes "move to the mean". That is exactly K-means. A GMM relaxes all three assumptions, which is why it can fit stretched and unequal clusters. Like K-means, EM finds a local optimum, so libraries run several starts (<code>n_init</code>) and keep the highest likelihood. Try <b>New start</b> on the stretched blobs until you see a bad one.</p></div>
+      </details>
+    </section>
+
+    <section id="compare" class="chapter">
+      <h2><span class="chap">03</span>Every method, every dataset</h2>
+      <p>Each row is a dataset, each column a method, all with sensible settings. Look down a column to learn a method's personality, and along a row to see which methods suit that shape. The bottom row has <em>no</em> structure: a good method should not invent much.</p>
+      <div class="lab">
+        <div class="lab-head"><p class="lab-title">Clustering comparison grid</p><p class="lab-hint">Grey ✕ marks points DBSCAN labels as noise.</p></div>
+        <div class="lab-body" style="overflow-x:auto"><div id="cmp" style="display:grid;grid-template-columns:96px repeat(5, minmax(120px, 1fr));gap:.5rem;align-items:center;min-width:720px"></div></div>
+      </div>
+    </section>
+
+    <section id="which" class="chapter">
+      <h2><span class="chap">04</span>Which method should I use?</h2>
+      <div class="table-wrap"><table class="clean">
+        <thead><tr><th>Your situation</th><th>Try first</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Round, similar-sized groups; lots of data</td><td><strong>K-means</strong></td><td>Fast, simple, interpretable centroids</td></tr>
+          <tr><td>You want to see the structure at every scale, or explain it with a tree</td><td><strong>Hierarchical</strong> (average / Ward)</td><td>The dendrogram is the explanation</td></tr>
+          <tr><td>Curved or snake-like shapes, outliers present</td><td><strong>DBSCAN</strong></td><td>Density-based; labels noise</td></tr>
+          <tr><td>Stretched or overlapping groups; you need probabilities</td><td><strong>Gaussian mixture</strong></td><td>Flexible shapes, soft memberships</td></tr>
+          <tr><td>Many columns (say 20+)</td><td><strong>PCA first</strong>, then cluster</td><td>Removes noise and fights the curse of dimensionality</td></tr>
+          <tr><td>You just want to <em>look</em> at high-dimensional data</td><td><strong>PCA</strong> to 2D; t-SNE / UMAP for curved structure</td><td>Visualisation, not clustering</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout"><span class="label">Whatever you choose</span><p>Scale your features, try more than one method and setting, and judge the result with a domain expert. In unsupervised learning, "sensible and useful" is the only test that really counts.</p></div>
+    </section>
+
+    <section id="next" class="chapter">
+      <h2><span class="chap">05</span>Where to go next</h2>
+      <div class="cards">
+        <div class="card"><span class="n">visualisation</span><h4>t-SNE and UMAP</h4><p>Non-linear methods that place similar points close together in 2D. Great for pictures of complex data (like the twisted ring PCA could not flatten), but distances and cluster sizes in the picture can mislead.</p></div>
+        <div class="card"><span class="n">non-linear PCA</span><h4>Kernel PCA</h4><p>Runs PCA in a transformed space, so it can unroll some curved structures.</p></div>
+        <div class="card"><span class="n">deep learning</span><h4>Autoencoders</h4><p>Neural networks that squeeze data through a small "bottleneck" layer and rebuild it: a non-linear cousin of PCA compression.</p></div>
+        <div class="card"><span class="n">density</span><h4>HDBSCAN and OPTICS</h4><p>Successors of DBSCAN that cope with clusters of different densities.</p></div>
+        <div class="card"><span class="n">evaluation</span><h4>Cluster validity</h4><p>Silhouette, Davies–Bouldin and Calinski–Harabasz scores; adjusted Rand index when labels exist.</p></div>
+        <div class="card"><span class="n">applications</span><h4>Anomaly detection</h4><p>Isolation forests and one-class methods: find the rows that do not belong anywhere.</p></div>
+      </div>
+      <h3>Further reading</h3>
+      <ul class="refs">
+        <li>James, Witten, Hastie, Tibshirani &amp; Taylor, <em>An Introduction to Statistical Learning</em>, chapter 12 "Unsupervised Learning" (free PDF at <a href="https://www.statlearning.com/" target="_blank" rel="noopener">statlearning.com</a>). The lecture follows its notation.</li>
+        <li>scikit-learn user guide: <a href="https://scikit-learn.org/stable/modules/clustering.html" target="_blank" rel="noopener">Clustering</a> and <a href="https://scikit-learn.org/stable/modules/decomposition.html#pca" target="_blank" rel="noopener">PCA</a>.</li>
+        <li>Wattenberg, Viégas &amp; Johnson, <a href="https://distill.pub/2016/misread-tsne/" target="_blank" rel="noopener">How to Use t-SNE Effectively</a>, Distill (2016).</li>
+      </ul>
+    </section>
+
+    <section id="quiz" class="chapter">
+      <h2><span class="chap">06</span>Check yourself</h2>
+      <div class="quiz" id="quiz-box"></div>
+      <p class="quiz-score" id="quiz-box-score"></p>
+      <a class="next-card" href="code-clustering.html">
+        <span class="next-eyebrow">Practice</span>
+        <span class="next-title">Clustering in Python →</span>
+        <span class="next-text">K-means, the elbow, silhouette and dendrograms with scikit-learn and SciPy, line by line.</span>
+      </a>
+    </section>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <img class="footer-logo" src="assets/img/utb-logo.svg" alt="" onerror="this.remove()">
+    <div>
+      <p><strong>Unsupervised Lab</strong>: an open, interactive companion to <em>CSIT843A Lecture 4: Unsupervised Learning</em>.</p>
+      <p>Created by <strong>Eng. Saeed Serwan Abdulsattar</strong>, College of Computer Studies, University of Technology Bahrain.</p>
+      <p><a href="https://github.com/SaeedSerwan/unsupervised" target="_blank" rel="noopener">Source on GitHub</a> · MIT License</p>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/vendor/katex/katex.min.js"></script>
+<script src="assets/vendor/katex/auto-render.min.js"></script>
+<script src="assets/js/lib.js"></script>
+<script src="assets/js/beyond.js"></script>
+</body>
+</html>
